@@ -13,6 +13,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { credentialService } from './credential-service';
 import { AcademicCredential, CredentialType } from '../azora-institutional-system/academic-credentialing';
+import { connectAzoraDatabase } from '../shared/database/connection';
 
 const app = express();
 const PORT = process.env.CREDENTIALS_PORT || 4205;
@@ -20,6 +21,9 @@ const PORT = process.env.CREDENTIALS_PORT || 4205;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Connect to Azora database
+connectAzoraDatabase(process.env.DATABASE_URI || process.env.MONGODB_URI).catch(console.error);
 
 app.get('/health', (req, res) => {
   res.json({

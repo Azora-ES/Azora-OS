@@ -12,6 +12,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { contentManagementSystem, Course, Module, Resource } from './content-management';
+import { connectAzoraDatabase } from '../shared/database/connection';
 
 const app = express();
 const PORT = process.env.CONTENT_PORT || 4203;
@@ -19,6 +20,9 @@ const PORT = process.env.CONTENT_PORT || 4203;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Connect to Azora database
+connectAzoraDatabase(process.env.DATABASE_URI || process.env.MONGODB_URI).catch(console.error);
 
 // Health check
 app.get('/health', (req, res) => {

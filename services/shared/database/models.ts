@@ -5,19 +5,20 @@ See LICENSE file for details.
 */
 
 /**
- * Database Models & Schemas
+ * Updated Database Models using Azora's Database Connection
  * 
- * MongoDB/Mongoose schemas for all education services
+ * Upgraded from generic Mongoose to use Azora's connection service
  */
 
-import mongoose from 'mongoose';
+import { mongoose, azoraDatabase } from './connection';
+import { Schema, Model, Document } from 'mongoose';
 
 // ========== ASSESSMENT SCHEMAS ==========
 
-const AssessmentSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const AssessmentSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   courseId: { type: String, required: true, index: true },
-  moduleId: { type: String, required: true },
+  moduleId: { type: String, required: true, index: true },
   title: { type: String, required: true },
   description: String,
   type: { type: String, enum: ['quiz', 'assignment', 'exam', 'project', 'peer-review', 'self-assessment'], required: true },
@@ -31,36 +32,36 @@ const AssessmentSchema = new mongoose.Schema({
     text: String,
     points: Number,
     options: [String],
-    correctAnswer: mongoose.Schema.Types.Mixed,
-    rubric: mongoose.Schema.Types.Mixed,
+    correctAnswer: Schema.Types.Mixed,
+    rubric: Schema.Types.Mixed,
     feedback: String,
   }],
-  rubric: mongoose.Schema.Types.Mixed,
-  createdAt: { type: Date, default: Date.now },
+  rubric: Schema.Types.Mixed,
+  createdAt: { type: Date, default: Date.now, index: true },
   createdBy: String,
   constitutionalAlignment: Boolean,
-});
+}, { collection: 'assessments', timestamps: true });
 
-const SubmissionSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const SubmissionSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   assessmentId: { type: String, required: true, index: true },
   studentId: { type: String, required: true, index: true },
   studentNumber: { type: String, required: true, index: true },
   answers: [{
     questionId: String,
-    answer: mongoose.Schema.Types.Mixed,
+    answer: Schema.Types.Mixed,
     type: String,
     timestamp: Date,
   }],
-  submittedAt: { type: Date, default: Date.now },
-  status: { type: String, enum: ['submitted', 'graded', 'grading', 'returned'], default: 'submitted' },
+  submittedAt: { type: Date, default: Date.now, index: true },
+  status: { type: String, enum: ['submitted', 'graded', 'grading', 'returned'], default: 'submitted', index: true },
   timeSpent: Number,
   ipAddress: String,
   deviceInfo: String,
-});
+}, { collection: 'submissions', timestamps: true });
 
-const GradeSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const GradeSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   submissionId: { type: String, required: true, index: true },
   assessmentId: { type: String, required: true, index: true },
   studentId: { type: String, required: true, index: true },
@@ -81,18 +82,18 @@ const GradeSchema = new mongoose.Schema({
     autoGraded: Boolean,
   }],
   feedback: String,
-  rubricScores: mongoose.Schema.Types.Mixed,
+  rubricScores: Schema.Types.Mixed,
   constitutionalAlignment: Number,
   uid: { type: String, required: true, unique: true, index: true },
-});
+}, { collection: 'grades', timestamps: true });
 
 // ========== CONTENT SCHEMAS ==========
 
-const CourseSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const CourseSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   title: { type: String, required: true },
   description: String,
-  code: { type: String, required: true, index: true },
+  code: { type: String, required: true, unique: true, index: true },
   instructorId: { type: String, required: true, index: true },
   level: { type: String, enum: ['beginner', 'intermediate', 'advanced', 'expert'] },
   category: String,
@@ -105,23 +106,23 @@ const CourseSchema = new mongoose.Schema({
     description: String,
     order: Number,
     type: String,
-    content: mongoose.Schema.Types.Mixed,
-    resources: [mongoose.Schema.Types.Mixed],
+    content: Schema.Types.Mixed,
+    resources: [Schema.Types.Mixed],
     estimatedDuration: Number,
     prerequisites: [String],
   }],
   learningObjectives: [String],
   prerequisites: [String],
-  status: { type: String, enum: ['draft', 'review', 'published', 'archived'], default: 'draft' },
+  status: { type: String, enum: ['draft', 'review', 'published', 'archived'], default: 'draft', index: true },
   constitutionalScore: Number,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   version: Number,
   publishedAt: Date,
-});
+}, { collection: 'courses', timestamps: true });
 
-const ResourceSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const ResourceSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   title: { type: String, required: true },
   type: { type: String, enum: ['pdf', 'link', 'code', 'dataset', 'video', 'image'] },
   url: { type: String, required: true },
@@ -130,11 +131,11 @@ const ResourceSchema = new mongoose.Schema({
   constitutionallyVetted: Boolean,
   vettedAt: Date,
   vettedBy: String,
-});
+}, { collection: 'resources', timestamps: true });
 
 // ========== ANALYTICS SCHEMAS ==========
 
-const ProgressDataSchema = new mongoose.Schema({
+const ProgressDataSchema = new Schema({
   studentId: { type: String, required: true, index: true },
   studentNumber: { type: String, required: true, index: true },
   courseId: { type: String, required: true, index: true },
@@ -142,15 +143,15 @@ const ProgressDataSchema = new mongoose.Schema({
   completed: Boolean,
   completionDate: Date,
   timeSpent: Number,
-  lastAccessed: { type: Date, default: Date.now },
+  lastAccessed: { type: Date, default: Date.now, index: true },
   progress: Number,
   assessmentScores: [Number],
-});
+}, { collection: 'progress_data', timestamps: true });
 
 // ========== CREDENTIAL SCHEMAS ==========
 
-const CredentialDocumentSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const CredentialDocumentSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   credentialId: { type: String, required: true, index: true },
   studentNumber: { type: String, required: true, index: true },
   type: String,
@@ -170,10 +171,10 @@ const CredentialDocumentSchema = new mongoose.Schema({
     ledgerRecordId: String,
   },
   createdAt: { type: Date, default: Date.now },
-});
+}, { collection: 'credentials', timestamps: true });
 
-const LedgerRecordSchema = new mongoose.Schema({
-  recordId: { type: String, required: true, unique: true },
+const LedgerRecordSchema = new Schema({
+  recordId: { type: String, required: true, unique: true, index: true },
   studentNumber: { type: String, required: true, index: true },
   credentialId: { type: String, required: true, index: true },
   credentialType: String,
@@ -181,34 +182,34 @@ const LedgerRecordSchema = new mongoose.Schema({
   blockchainHash: { type: String, required: true, index: true },
   issuedDate: Date,
   issuer: String,
-  metadata: mongoose.Schema.Types.Mixed,
+  metadata: Schema.Types.Mixed,
   verified: Boolean,
-});
+}, { collection: 'ledger_records', timestamps: true });
 
 // ========== COLLABORATION SCHEMAS ==========
 
-const ForumSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const ForumSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   courseId: { type: String, required: true, index: true },
   title: String,
   description: String,
-  topics: [mongoose.Schema.Types.Mixed],
+  topics: [Schema.Types.Mixed],
   createdAt: { type: Date, default: Date.now },
   createdBy: String,
-});
+}, { collection: 'forums', timestamps: true });
 
-const MessageSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const MessageSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   senderId: { type: String, required: true, index: true },
   receiverId: { type: String, required: true, index: true },
   content: String,
   read: { type: Boolean, default: false },
   readAt: Date,
   createdAt: { type: Date, default: Date.now },
-});
+}, { collection: 'messages', timestamps: true });
 
-const StudyGroupSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const StudyGroupSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   name: String,
   description: String,
   courseId: { type: String, required: true, index: true },
@@ -221,26 +222,26 @@ const StudyGroupSchema = new mongoose.Schema({
   visibility: { type: String, enum: ['public', 'private'] },
   createdAt: { type: Date, default: Date.now },
   createdBy: String,
-});
+}, { collection: 'study_groups', timestamps: true });
 
 // ========== PAYMENT SCHEMAS ==========
 
-const PaymentSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const PaymentSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   studentId: { type: String, required: true, index: true },
   studentNumber: { type: String, required: true, index: true },
   courseId: { type: String, required: true, index: true },
   amount: Number,
   currency: String,
-  status: { type: String, enum: ['pending', 'completed', 'failed', 'refunded'] },
+  status: { type: String, enum: ['pending', 'completed', 'failed', 'refunded'], index: true },
   paymentMethod: String,
-  transactionId: String,
-  createdAt: { type: Date, default: Date.now },
+  transactionId: { type: String, unique: true, sparse: true },
+  createdAt: { type: Date, default: Date.now, index: true },
   completedAt: Date,
-});
+}, { collection: 'payments', timestamps: true });
 
-const ScholarshipSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const ScholarshipSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   name: String,
   description: String,
   eligibilityCriteria: [String],
@@ -250,14 +251,14 @@ const ScholarshipSchema = new mongoose.Schema({
   maxRecipients: Number,
   currentRecipients: { type: Number, default: 0 },
   applicationDeadline: Date,
-  status: { type: String, enum: ['active', 'closed', 'expired'], default: 'active' },
+  status: { type: String, enum: ['active', 'closed', 'expired'], default: 'active', index: true },
   createdAt: { type: Date, default: Date.now },
-});
+}, { collection: 'scholarships', timestamps: true });
 
 // ========== MEDIA SCHEMAS ==========
 
-const VideoAssetSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const VideoAssetSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   title: String,
   description: String,
   url: String,
@@ -271,11 +272,11 @@ const VideoAssetSchema = new mongoose.Schema({
   moduleId: String,
   uploadedBy: String,
   uploadedAt: { type: Date, default: Date.now },
-  metadata: mongoose.Schema.Types.Mixed,
-});
+  metadata: Schema.Types.Mixed,
+}, { collection: 'video_assets', timestamps: true });
 
-const VideoViewSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+const VideoViewSchema = new Schema({
+  id: { type: String, required: true, unique: true, index: true },
   videoId: { type: String, required: true, index: true },
   userId: { type: String, required: true, index: true },
   watchedDuration: Number,
@@ -284,32 +285,24 @@ const VideoViewSchema = new mongoose.Schema({
   location: String,
   startedAt: { type: Date, default: Date.now },
   endedAt: Date,
-});
+}, { collection: 'video_views', timestamps: true });
 
-// Export models
-export const Assessment = mongoose.model('Assessment', AssessmentSchema);
-export const Submission = mongoose.model('Submission', SubmissionSchema);
-export const Grade = mongoose.model('Grade', GradeSchema);
-export const Course = mongoose.model('Course', CourseSchema);
-export const Resource = mongoose.model('Resource', ResourceSchema);
-export const ProgressData = mongoose.model('ProgressData', ProgressDataSchema);
-export const CredentialDocument = mongoose.model('CredentialDocument', CredentialDocumentSchema);
-export const LedgerRecord = mongoose.model('LedgerRecord', LedgerRecordSchema);
-export const Forum = mongoose.model('Forum', ForumSchema);
-export const Message = mongoose.model('Message', MessageSchema);
-export const StudyGroup = mongoose.model('StudyGroup', StudyGroupSchema);
-export const Payment = mongoose.model('Payment', PaymentSchema);
-export const Scholarship = mongoose.model('Scholarship', ScholarshipSchema);
-export const VideoAsset = mongoose.model('VideoAsset', VideoAssetSchema);
-export const VideoView = mongoose.model('VideoView', VideoViewSchema);
+// Export models (will be created after connection)
+export const Assessment = mongoose.models.Assessment || mongoose.model('Assessment', AssessmentSchema);
+export const Submission = mongoose.models.Submission || mongoose.model('Submission', SubmissionSchema);
+export const Grade = mongoose.models.Grade || mongoose.model('Grade', GradeSchema);
+export const Course = mongoose.models.Course || mongoose.model('Course', CourseSchema);
+export const Resource = mongoose.models.Resource || mongoose.model('Resource', ResourceSchema);
+export const ProgressData = mongoose.models.ProgressData || mongoose.model('ProgressData', ProgressDataSchema);
+export const CredentialDocument = mongoose.models.CredentialDocument || mongoose.model('CredentialDocument', CredentialDocumentSchema);
+export const LedgerRecord = mongoose.models.LedgerRecord || mongoose.model('LedgerRecord', LedgerRecordSchema);
+export const Forum = mongoose.models.Forum || mongoose.model('Forum', ForumSchema);
+export const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
+export const StudyGroup = mongoose.models.StudyGroup || mongoose.model('StudyGroup', StudyGroupSchema);
+export const Payment = mongoose.models.Payment || mongoose.model('Payment', PaymentSchema);
+export const Scholarship = mongoose.models.Scholarship || mongoose.model('Scholarship', ScholarshipSchema);
+export const VideoAsset = mongoose.models.VideoAsset || mongoose.model('VideoAsset', VideoAssetSchema);
+export const VideoView = mongoose.models.VideoView || mongoose.model('VideoView', VideoViewSchema);
 
-// Database connection
-export async function connectDatabase(uri: string): Promise<void> {
-  try {
-    await mongoose.connect(uri);
-    console.log('✅ Database connected');
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    throw error;
-  }
-}
+// Re-export connection service
+export { azoraDatabase, mongoose, connectAzoraDatabase } from './connection';

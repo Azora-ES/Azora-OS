@@ -13,6 +13,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { gradingEngine, Assessment, Submission, Grade } from './grading-engine';
 import { gradebookService, CourseGradebook, StudentTranscript } from './gradebook-service';
+import { connectAzoraDatabase, azoraDatabase } from '../shared/database/connection';
 
 const app = express();
 const PORT = process.env.ASSESSMENT_PORT || 4202;
@@ -20,6 +21,9 @@ const PORT = process.env.ASSESSMENT_PORT || 4202;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Connect to Azora database
+connectAzoraDatabase(process.env.DATABASE_URI || process.env.MONGODB_URI).catch(console.error);
 
 // Health check
 app.get('/health', (req, res) => {
