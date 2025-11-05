@@ -31,6 +31,16 @@ import {
 } from 'lucide-react';
 import { useMyCourses, useMe, usePIVCLeaderboard, useCourses, useMentors, useStudyGroups } from './hooks';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { 
+  CourseCardSkeleton, 
+  PortfolioItemSkeleton, 
+  LeaderboardSkeleton,
+  MentorCardSkeleton,
+  StudyGroupCardSkeleton,
+  OpportunityCardSkeleton,
+  GridSkeleton,
+  ListSkeleton
+} from '../components/LoadingSkeletons';
 
 
 export default function SapiensAdvancedLMS() {
@@ -335,12 +345,7 @@ function DashboardView({ user, courses, leaderboard }) {
 
 function Leaderboard({ leaderboard }) {
   if (!leaderboard) {
-    return (
-      <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 rounded-2xl p-6 border border-purple-500/20">
-        <h3 className="text-xl font-bold mb-4">PIVC Leaderboard</h3>
-        <div className="text-center p-4">Loading leaderboard...</div>
-      </div>
-    );
+    return <LeaderboardSkeleton entries={5} />;
   }
 
   return (
@@ -368,14 +373,10 @@ function Leaderboard({ leaderboard }) {
 }
 
 function LearnView() {
-  const { courses, loading, error } = useCourses({ limit: 10, offset: 0 });
+  const { courses, loading, error } = useCourses(10, 0);
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-      </div>
-    );
+    return <GridSkeleton count={6} component={CourseCardSkeleton} />;
   }
 
   if (error) {
@@ -545,7 +546,7 @@ function CommunityView() {
       </div>
 
       {loading && (!leaderboard || leaderboard.length === 0) ? (
-        <LeaderboardSkeleton />
+        <LeaderboardSkeleton entries={10} />
       ) : (
         <div className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 rounded-2xl p-6 border border-purple-500/20">
           <div className="space-y-3">
@@ -573,9 +574,7 @@ function CommunityView() {
         <div className="space-y-4">
           <h3 className="text-2xl font-bold">🤝 Connect with Mentors</h3>
           {mentorsLoading ? (
-            <div className="grid grid-cols-1 gap-4">
-              {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
+            <ListSkeleton count={3} component={MentorCardSkeleton} />
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {mentors.map((mentor) => <MentorCard key={mentor.id} mentor={mentor} />)}
@@ -587,9 +586,7 @@ function CommunityView() {
         <div className="space-y-4">
           <h3 className="text-2xl font-bold">📚 Join a Study Group</h3>
           {studyGroupsLoading ? (
-            <div className="grid grid-cols-1 gap-4">
-              {[...Array(2)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
+            <ListSkeleton count={2} component={StudyGroupCardSkeleton} />
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {studyGroups.map((group) => <StudyGroupCard key={group.id} group={group} />)}
@@ -601,31 +598,7 @@ function CommunityView() {
   );
 }
 
-const LeaderboardSkeleton = () => (
-  <div className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 rounded-2xl p-6 border border-purple-500/20 animate-pulse">
-    <div className="space-y-3">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex items-center justify-between bg-black/20 p-3 rounded-lg">
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-700/50 rounded-full"></div>
-            <div className="w-32 h-6 bg-gray-700/50 rounded"></div>
-          </div>
-          <div className="w-24 h-6 bg-gray-700/50 rounded"></div>
-        </div>
-      ))}
-    </div>
-    <div className="w-full mt-6 h-12 bg-gray-700/50 rounded-lg"></div>
-  </div>
-);
-
-const SkeletonCard = () => (
-  <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-2xl p-6 border border-purple-500/20 animate-pulse">
-    <div className="h-8 bg-gray-700/50 rounded w-3/4 mb-4"></div>
-    <div className="h-4 bg-gray-700/50 rounded w-full mb-2"></div>
-    <div className="h-4 bg-gray-700/50 rounded w-5/6 mb-6"></div>
-    <div className="h-10 bg-gray-700/50 rounded w-full"></div>
-  </div>
-);
+// Skeleton components moved to LoadingSkeletons.tsx for reusability
 
 // ============================================================================
 // COMPONENT LIBRARY
