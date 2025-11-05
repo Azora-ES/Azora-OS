@@ -30,6 +30,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useMyCourses, useMe, usePIVCLeaderboard, useCourses, useMentors, useStudyGroups } from './hooks';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 
 export default function SapiensAdvancedLMS() {
@@ -41,9 +42,10 @@ export default function SapiensAdvancedLMS() {
   const { leaderboard, loading: leaderboardLoading } = usePIVCLeaderboard('monthly');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-blue-950 text-white">
-      {/* Top Navigation */}
-      <header className="border-b border-purple-500/30 backdrop-blur-md bg-black/20 sticky top-0 z-50">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-blue-950 text-white">
+        {/* Top Navigation */}
+        <header className="border-b border-purple-500/30 backdrop-blur-md bg-black/20 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -223,6 +225,7 @@ export default function SapiensAdvancedLMS() {
         )}
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
 

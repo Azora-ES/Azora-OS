@@ -11,6 +11,7 @@ Complete interactive learning ecosystem for Kindergarten through Grade 12
 'use client';
 
 import React, { useState } from 'react';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AgeGroupIDE } from '../components/integrated-ide';
 import { 
   FractionVisualizer, 
@@ -38,9 +39,10 @@ export default function SapiensK12() {
   const [activeSimulation, setActiveSimulation] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-blue-950 text-white">
-      {/* Hero Header */}
-      <header className="border-b border-purple-500/30 backdrop-blur-md bg-black/20">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-blue-950 text-white">
+        {/* Hero Header */}
+        <header className="border-b border-purple-500/30 backdrop-blur-md bg-black/20">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -444,6 +446,7 @@ export default function SapiensK12() {
         </div>
       </footer>
     </div>
+    </ErrorBoundary>
   );
 }
 

@@ -11,6 +11,7 @@ Mint, Sell, Earn - Transform Your Work into Multiple Income Streams
 'use client';
 
 import React, { useState } from 'react';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import {
   DollarSign,
   Coins,
@@ -38,9 +39,10 @@ export default function CreativeEarningHub() {
   const [monthlyPassive, setMonthlyPassive] = useState(437);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-blue-950 to-indigo-950 text-white">
-      {/* Header */}
-      <header className="border-b border-purple-500/30 backdrop-blur-md bg-black/20">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-blue-950 to-indigo-950 text-white">
+        {/* Header */}
+        <header className="border-b border-purple-500/30 backdrop-blur-md bg-black/20">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -100,6 +102,7 @@ export default function CreativeEarningHub() {
         {activeTab === 'quests' && <QuestsView setTokens={setTokens} />}
       </main>
     </div>
+    </ErrorBoundary>
   );
 }
 
