@@ -76,7 +76,7 @@
     "@refinedev/react-hook-form": "^4.8.6",
     "@refinedev/simple-rest": "^5.0.0",
     "@supabase/supabase-js": "2.78.0",
-    "@tauri-apps/api": "2.0.0-beta.15",
+    "@tauri-apps/api": "2.9.0",
     "@tauri-apps/plugin-os": "2.0.0-beta.7",
     "@tauri-apps/plugin-shell": "2.0.0-beta.8",
     "@xenova/transformers": "^2.17.0",
