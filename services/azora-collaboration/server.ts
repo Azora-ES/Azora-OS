@@ -13,6 +13,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { collaborationService } from './collaboration-service';
 import { connectAzoraDatabase } from '../shared/database/connection';
+import { Server as HttpServer } from 'http';
+import { educationWebSocket } from '../shared/websocket-server';
 
 const app = express();
 const PORT = process.env.COLLABORATION_PORT || 4206;
@@ -23,6 +25,10 @@ app.use(express.json());
 
 // Connect to Azora database
 connectAzoraDatabase(process.env.DATABASE_URI || process.env.MONGODB_URI).catch(console.error);
+
+// Initialize WebSocket server
+const httpServer = HttpServer(app);
+educationWebSocket.initialize(httpServer);
 
 app.get('/health', (req, res) => {
   res.json({
@@ -163,7 +169,7 @@ app.get('/api/peer-reviews/submission/:submissionId', (req, res) => {
   res.json({ reviews });
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`\n💬 AZORA COLLABORATION PLATFORM running on port ${PORT}\n`);
   console.log(`   📝 Forums: http://localhost:${PORT}/api/forums`);
   console.log(`   💬 Messages: http://localhost:${PORT}/api/messages`);
