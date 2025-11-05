@@ -98,19 +98,43 @@ export const GET_COURSES = gql`
   }
 `;
 
-export const useProjects = (limit: number, offset: number) => {
-  const { data, loading, error } = useQuery(GET_PROJECTS, {
+/**
+ * Hook to fetch projects with pagination
+ * @param limit - Maximum number of projects to fetch (default: 10)
+ * @param offset - Number of projects to skip (default: 0)
+ * @returns Project data, loading state, and error
+ */
+export function useProjects(limit: number = 10, offset: number = 0) {
+  const { data, loading, error, fetchMore } = useQuery(GET_PROJECTS, {
     variables: { limit, offset },
   });
-  return { projects: data?.projects, loading, error };
-};
+  
+  return { 
+    projects: data?.projects, 
+    loading, 
+    error,
+    fetchMore
+  };
+}
 
-export const useCourses = (limit: number, offset: number) => {
-  const { data, loading, error } = useQuery(GET_COURSES, {
+/**
+ * Hook to fetch courses with pagination
+ * @param limit - Maximum number of courses to fetch (default: 10)
+ * @param offset - Number of courses to skip (default: 0)
+ * @returns Course data, loading state, and error
+ */
+export function useCourses(limit: number = 10, offset: number = 0) {
+  const { data, loading, error, fetchMore } = useQuery(GET_COURSES, {
     variables: { limit, offset },
   });
-  return { courses: data?.courses, loading, error };
-};
+  
+  return { 
+    courses: data?.courses, 
+    loading, 
+    error,
+    fetchMore
+  };
+}
 
 export const GET_MY_PORTFOLIO = gql`
   query GetMyPortfolio {
@@ -182,20 +206,52 @@ export function useMyProgress(courseId: string) {
   };
 }
 
-export function usePIVCLeaderboard(timeframe: string) {
-  return useQuery(GET_PIVC_LEADERBOARD, { variables: { timeframe } });
+/**
+ * Hook to fetch PIVC leaderboard for a specific timeframe
+ * @param timeframe - Time period for leaderboard ('daily' | 'weekly' | 'monthly' | 'all-time')
+ * @returns Leaderboard data with properly structured return values
+ */
+export function usePIVCLeaderboard(timeframe: string = 'monthly') {
+  const { data, loading, error, refetch } = useQuery(GET_PIVC_LEADERBOARD, { 
+    variables: { timeframe } 
+  });
+  
+  return { 
+    leaderboard: data?.pivcLeaderboard,
+    loading, 
+    error,
+    refetch
+  };
 }
 
-export function useProjects(limit: number = 10, offset: number = 0) {
-  return useQuery(GET_PROJECTS, { variables: { limit, offset } });
-}
-
+/**
+ * Hook to fetch current user's portfolio
+ * @returns Portfolio items with loading and error states
+ */
 export function useMyPortfolio() {
-  return useQuery(GET_MY_PORTFOLIO);
+  const { data, loading, error, refetch } = useQuery(GET_MY_PORTFOLIO);
+  
+  return { 
+    portfolio: data?.myPortfolio,
+    loading, 
+    error,
+    refetch
+  };
 }
 
+/**
+ * Hook to fetch current user's profile data
+ * @returns User data with profile information
+ */
 export function useMe() {
-  return useQuery(GET_ME);
+  const { data, loading, error, refetch } = useQuery(GET_ME);
+  
+  return { 
+    user: data?.me,
+    loading, 
+    error,
+    refetch
+  };
 }
 
 export function useEnrollCourse() {
@@ -273,24 +329,60 @@ export const GET_STUDY_GROUPS = gql`
   }
 `;
 
-export const useLeaderboard = (limit: number, offset: number) => {
-  const { data, loading, error } = useQuery(GET_LEADERBOARD, {
+/**
+ * Hook to fetch leaderboard with pagination
+ * @param limit - Maximum number of entries to fetch (default: 10)
+ * @param offset - Number of entries to skip (default: 0)
+ * @returns Leaderboard data with fetchMore for pagination
+ */
+export function useLeaderboard(limit: number = 10, offset: number = 0) {
+  const { data, loading, error, fetchMore } = useQuery(GET_LEADERBOARD, {
     variables: { limit, offset },
   });
-  return { data, loading, error, fetchMore };
-};
+  
+  return { 
+    leaderboard: data?.leaderboard,
+    loading, 
+    error, 
+    fetchMore 
+  };
+}
 
-export const useMentors = (limit: number, offset: number) => {
+/**
+ * Hook to fetch mentors with pagination
+ * @param limit - Maximum number of mentors to fetch (default: 10)
+ * @param offset - Number of mentors to skip (default: 0)
+ * @returns Mentor data with fetchMore for pagination
+ */
+export function useMentors(limit: number = 10, offset: number = 0) {
   const { data, loading, error, fetchMore } = useQuery(GET_MENTORS, {
     variables: { limit, offset },
   });
-  return { data, loading, error, fetchMore };
-};
+  
+  return { 
+    mentors: data?.mentors,
+    loading, 
+    error, 
+    fetchMore 
+  };
+}
 
-export const useStudyGroups = (limit: number, offset: number) => {
+/**
+ * Hook to fetch study groups with pagination
+ * @param limit - Maximum number of groups to fetch (default: 10)
+ * @param offset - Number of groups to skip (default: 0)
+ * @returns Study group data with fetchMore for pagination
+ */
+export function useStudyGroups(limit: number = 10, offset: number = 0) {
   const { data, loading, error, fetchMore } = useQuery(GET_STUDY_GROUPS, {
     variables: { limit, offset },
   });
-  return { data, loading, error, fetchMore };
-};
+  
+  return { 
+    studyGroups: data?.studyGroups,
+    loading, 
+    error, 
+    fetchMore 
+  };
+}
 
