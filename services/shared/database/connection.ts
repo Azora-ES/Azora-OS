@@ -127,23 +127,253 @@ class AzoraDatabase {
     return this.mongoConnection?.db;
   }
 
+/*
+AZORA PROPRIETARY LICENSE
+Copyright (c) 2025 Azora ES (Pty) Ltd. All Rights Reserved.
+See LICENSE file for details.
+*/
+
+/**
+ * UPGRADED Azora Database Connection Service
+ * 
+ * Enhanced features:
+ * - Connection pooling with retry logic
+ * - Automatic reconnection
+ * - Health monitoring
+ * - Transaction support
+ * - Query optimization
+ * - Performance metrics
+ */
+
+import mongoose from 'mongoose';
+
+export interface DatabaseConfig {
+  mongoUri?: string;
+  postgresUri?: string;
+  database?: string;
+  options?: mongoose.ConnectOptions;
+}
+
+class AzoraDatabase {
+  private static instance: AzoraDatabase;
+  private mongoConnection: mongoose.Connection | null = null;
+  private isConnected: boolean = false;
+  private config: DatabaseConfig;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+
+  private constructor() {
+    // Use Azora's standard database connection pattern
+    this.config = {
+      mongoUri: process.env.MONGODB_URI || 
+                process.env.DATABASE_URI || 
+                'mongodb://localhost:27017/azora-education',
+      database: 'azora-education',
+      options: {
+        maxPoolSize: 50, // Increased for better performance
+        minPoolSize: 5,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
+        retryWrites: true,
+        retryReads: true,
+      },
+    };
+  }
+
+  public static getInstance(): AzoraDatabase {
+    if (!AzoraDatabase.instance) {
+      AzoraDatabase.instance = new AzoraDatabase();
+    }
+    return AzoraDatabase.instance;
+  }
+
   /**
-   * Health check
+   * Connect to MongoDB with retry logic
+   */
+  async connect(config?: Partial<DatabaseConfig>): Promise<void> {
+    if (this.isConnected && this.mongoConnection?.readyState === 1) {
+      console.log('✅ Database already connected');
+      return;
+    }
+
+    const finalConfig = { ...this.config, ...config };
+    const uri = finalConfig.mongoUri || this.config.mongoUri!;
+
+    try {
+      await mongoose.connect(uri, finalConfig.options);
+      this.mongoConnection = mongoose.connection;
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
+
+      // Enhanced event handlers
+      this.mongoConnection.on('error', (error) => {
+        console.error('❌ MongoDB connection error:', error);
+        this.isConnected = false;
+        this.handleReconnection(uri, finalConfig);
+      });
+
+      this.mongoConnection.on('disconnected', () => {
+        console.warn('⚠️ MongoDB disconnected');
+        this.isConnected = false;
+        this.handleReconnection(uri, finalConfig);
+      });
+
+      this.mongoConnection.on('reconnected', () => {
+        console.log('✅ MongoDB reconnected');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+      });
+
+      this.mongoConnection.on('connecting', () => {
+        console.log('🔄 Connecting to MongoDB...');
+      });
+
+      this.mongoConnection.on('connected', () => {
+        console.log('✅ Connected to Azora MongoDB database');
+        console.log(`   Database: ${finalConfig.database || 'azora-education'}`);
+        console.log(`   URI: ${uri.replace(/\/\/.*@/, '//***@')}`); // Hide credentials
+      });
+
+      console.log('✅ Connected to Azora MongoDB database');
+      console.log(`   Database: ${finalConfig.database || 'azora-education'}`);
+      console.log(`   URI: ${uri.replace(/\/\/.*@/, '//***@')}`); // Hide credentials
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      this.handleReconnection(uri, finalConfig);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle reconnection with exponential backoff
+   */
+  private handleReconnection(uri: string, config: DatabaseConfig): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('❌ Max reconnection attempts reached');
+      return;
+    }
+
+    if (this.reconnectTimer) {
+      return; // Already attempting reconnection
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Max 30s
+
+    console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms...`);
+
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      try {
+        await this.connect({ mongoUri: uri, ...config });
+      } catch (error) {
+        console.error('❌ Reconnection failed:', error);
+      }
+    }, delay);
+  }
+
+  /**
+   * Disconnect from database
+   */
+  async disconnect(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.mongoConnection) {
+      await mongoose.disconnect();
+      this.mongoConnection = null;
+      this.isConnected = false;
+      console.log('✅ Disconnected from database');
+    }
+  }
+
+  /**
+   * Get connection status
+   */
+  isDatabaseConnected(): boolean {
+    return this.isConnected && this.mongoConnection?.readyState === 1;
+  }
+
+  /**
+   * Get mongoose connection
+   */
+  getConnection(): mongoose.Connection {
+    if (!this.mongoConnection) {
+      throw new Error('Database not connected. Call connect() first.');
+    }
+    return this.mongoConnection;
+  }
+
+  /**
+   * Get database instance
+   */
+  getDatabase() {
+    return this.mongoConnection?.db;
+  }
+
+  /**
+   * Start a transaction session
+   */
+  async startSession(): Promise<mongoose.ClientSession> {
+    if (!this.mongoConnection) {
+      throw new Error('Database not connected');
+    }
+    return await this.mongoConnection.startSession();
+  }
+
+  /**
+   * Execute in transaction
+   */
+  async withTransaction<T>(
+    callback: (session: mongoose.ClientSession) => Promise<T>
+  ): Promise<T> {
+    const session = await this.startSession();
+    try {
+      let result: T;
+      await session.withTransaction(async () => {
+        result = await callback(session);
+      });
+      return result!;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Health check with detailed metrics
    */
   async healthCheck(): Promise<{
     status: 'healthy' | 'unhealthy';
     database: string;
     connectionState: string;
     readyState: number;
+    metrics: {
+      collections: number;
+      indexes: number;
+      poolSize: number;
+    };
   }> {
     const state = this.mongoConnection?.readyState || 0;
     const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+    
+    const db = this.getDatabase();
+    const collections = db ? await db.listCollections().toArray() : [];
+    const indexes = db ? await db.collection('assessments').indexes() : [];
     
     return {
       status: state === 1 ? 'healthy' : 'unhealthy',
       database: this.config.database || 'azora-education',
       connectionState: states[state] || 'unknown',
       readyState: state,
+      metrics: {
+        collections: collections.length,
+        indexes: indexes.length,
+        poolSize: (this.mongoConnection as any)?.db?.serverConfig?.poolSize || 0,
+      },
     };
   }
 

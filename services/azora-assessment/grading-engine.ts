@@ -17,6 +17,8 @@ See LICENSE file for details.
 
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
+import { Assessment, Submission, Grade } from '../shared/database/models';
+import { azoraDatabase } from '../shared/database/connection';
 
 export interface Assessment {
   id: string;
@@ -170,10 +172,6 @@ export interface LetterGradeScale {
 
 export class GradingEngine extends EventEmitter {
   private static instance: GradingEngine;
-  private assessments: Map<string, Assessment> = new Map();
-  private submissions: Map<string, Submission> = new Map();
-  private grades: Map<string, Grade> = new Map();
-  private gradebooks: Map<string, GradebookEntry> = new Map(); // courseId -> studentId -> entry
   private defaultGradingConfig: GradingConfig = {
     letterGrades: {
       'A+': { min: 97, max: 100 },
@@ -207,25 +205,34 @@ export class GradingEngine extends EventEmitter {
   }
 
   /**
-   * Create a new assessment
+   * Create a new assessment (MongoDB)
    */
   async createAssessment(assessment: Omit<Assessment, 'id' | 'createdAt'>): Promise<Assessment> {
-    const newAssessment: Assessment = {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+
+    const newAssessment = new Assessment({
       ...assessment,
       id: crypto.randomUUID(),
       createdAt: new Date(),
-    };
+    });
 
-    this.assessments.set(newAssessment.id, newAssessment);
+    await newAssessment.save();
     this.emit('assessment:created', newAssessment);
-    return newAssessment;
+    return newAssessment.toObject();
   }
 
   /**
-   * Submit an assessment
+   * Submit an assessment (MongoDB)
    */
   async submitAssessment(submission: Omit<Submission, 'id' | 'submittedAt' | 'status'>): Promise<Submission> {
-    const assessment = this.assessments.get(submission.assessmentId);
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+
+    // Check if assessment exists
+    const assessment = await Assessment.findOne({ id: submission.assessmentId });
     if (!assessment) {
       throw new Error('Assessment not found');
     }
@@ -233,34 +240,38 @@ export class GradingEngine extends EventEmitter {
     // Check due date
     const isLate = assessment.dueDate && new Date() > assessment.dueDate;
 
-    const newSubmission: Submission = {
+    const newSubmission = new Submission({
       ...submission,
       id: crypto.randomUUID(),
       submittedAt: new Date(),
       status: 'submitted',
-    };
+    });
 
-    this.submissions.set(newSubmission.id, newSubmission);
-    this.emit('submission:created', newSubmission);
+    await newSubmission.save();
 
     // Auto-grade if enabled and assessment type allows
     if (this.defaultGradingConfig.autoGradeEnabled && this.canAutoGrade(assessment)) {
       await this.autoGrade(newSubmission.id);
     }
 
-    return newSubmission;
+    this.emit('submission:created', newSubmission.toObject());
+    return newSubmission.toObject();
   }
 
   /**
-   * Auto-grade a submission
+   * Auto-grade a submission (MongoDB)
    */
   async autoGrade(submissionId: string): Promise<Grade> {
-    const submission = this.submissions.get(submissionId);
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+
+    const submission = await Submission.findOne({ id: submissionId });
     if (!submission) {
       throw new Error('Submission not found');
     }
 
-    const assessment = this.assessments.get(submission.assessmentId);
+    const assessment = await Assessment.findOne({ id: submission.assessmentId });
     if (!assessment) {
       throw new Error('Assessment not found');
     }
@@ -306,7 +317,7 @@ export class GradingEngine extends EventEmitter {
     // Generate UID for tracing
     const uid = this.generateUID(submission.studentNumber, assessment.id, 'grade');
 
-    const grade: Grade = {
+    const grade = new Grade({
       id: crypto.randomUUID(),
       submissionId: submission.id,
       assessmentId: assessment.id,
@@ -323,17 +334,19 @@ export class GradingEngine extends EventEmitter {
       questionGrades,
       constitutionalAlignment: assessment.constitutionalAlignment ? 95 : 0,
       uid,
-    };
+    });
 
-    this.grades.set(grade.id, grade);
+    await grade.save();
+
+    // Update submission status
     submission.status = 'graded';
-    this.submissions.set(submission.id, submission);
+    await submission.save();
 
     // Update gradebook
-    await this.updateGradebook(grade);
+    await this.updateGradebook(grade.toObject());
 
-    this.emit('grade:created', grade);
-    return grade;
+    this.emit('grade:created', grade.toObject());
+    return grade.toObject();
   }
 
   /**
@@ -374,7 +387,7 @@ export class GradingEngine extends EventEmitter {
   }
 
   /**
-   * Manual grading with rubric
+   * Manual grading with rubric (MongoDB)
    */
   async manualGrade(
     submissionId: string,
@@ -383,12 +396,16 @@ export class GradingEngine extends EventEmitter {
     rubricScores?: Record<string, number>,
     overallFeedback?: string
   ): Promise<Grade> {
-    const submission = this.submissions.get(submissionId);
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+
+    const submission = await Submission.findOne({ id: submissionId });
     if (!submission) {
       throw new Error('Submission not found');
     }
 
-    const assessment = this.assessments.get(submission.assessmentId);
+    const assessment = await Assessment.findOne({ id: submission.assessmentId });
     if (!assessment) {
       throw new Error('Assessment not found');
     }
@@ -401,7 +418,7 @@ export class GradingEngine extends EventEmitter {
     // Generate UID
     const uid = this.generateUID(submission.studentNumber, assessment.id, 'grade');
 
-    const grade: Grade = {
+    const grade = new Grade({
       id: crypto.randomUUID(),
       submissionId: submission.id,
       assessmentId: assessment.id,
@@ -424,17 +441,19 @@ export class GradingEngine extends EventEmitter {
       rubricScores,
       constitutionalAlignment: assessment.constitutionalAlignment ? 95 : 0,
       uid,
-    };
+    });
 
-    this.grades.set(grade.id, grade);
+    await grade.save();
+
+    // Update submission status
     submission.status = 'graded';
-    this.submissions.set(submission.id, submission);
+    await submission.save();
 
     // Update gradebook
-    await this.updateGradebook(grade);
+    await this.updateGradebook(grade.toObject());
 
-    this.emit('grade:created', grade);
-    return grade;
+    this.emit('grade:created', grade.toObject());
+    return grade.toObject();
   }
 
   /**
@@ -459,69 +478,16 @@ export class GradingEngine extends EventEmitter {
   }
 
   /**
-   * Update gradebook entry
+   * Update gradebook entry (MongoDB)
    */
   private async updateGradebook(grade: Grade): Promise<void> {
-    const key = `${grade.courseId}:${grade.studentId}`;
-    let entry = this.gradebooks.get(key);
-
-    if (!entry) {
-      entry = {
-        studentId: grade.studentId,
-        studentNumber: grade.studentNumber,
-        courseId: grade.courseId,
-        assessments: [],
-        currentGrade: 0,
-        letterGrade: 'F',
-        gpa: 0,
-        totalPoints: 0,
-        earnedPoints: 0,
-        lastUpdated: new Date(),
-      };
+    if (!azoraDatabase.isDatabaseConnected()) {
+      return;
     }
 
-    // Update or add assessment grade
-    const existingIndex = entry.assessments.findIndex(a => a.assessmentId === grade.assessmentId);
-    const assessmentGrade: AssessmentGrade = {
-      assessmentId: grade.assessmentId,
-      assessmentName: this.assessments.get(grade.assessmentId)?.title || 'Unknown',
-      points: grade.earnedPoints,
-      maxPoints: grade.totalPoints,
-      percentage: grade.percentage,
-      letterGrade: grade.letterGrade,
-      gradedAt: grade.gradedAt,
-    };
-
-    if (existingIndex >= 0) {
-      entry.assessments[existingIndex] = assessmentGrade;
-    } else {
-      entry.assessments.push(assessmentGrade);
-    }
-
-    // Recalculate totals
-    entry.totalPoints = entry.assessments.reduce((sum, a) => sum + a.maxPoints, 0);
-    entry.earnedPoints = entry.assessments.reduce((sum, a) => sum + a.points, 0);
-    entry.currentGrade = entry.totalPoints > 0 ? (entry.earnedPoints / entry.totalPoints) * 100 : 0;
-    entry.letterGrade = this.calculateLetterGrade(entry.currentGrade);
-    entry.gpa = this.calculateGPA(entry.letterGrade);
-    entry.lastUpdated = new Date();
-
-    this.gradebooks.set(key, entry);
-    this.emit('gradebook:updated', entry);
-  }
-
-  /**
-   * Calculate GPA from letter grade
-   */
-  private calculateGPA(letterGrade: string): number {
-    const gradePoints: Record<string, number> = {
-      'A+': 4.0, 'A': 4.0, 'A-': 3.7,
-      'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-      'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-      'D+': 1.3, 'D': 1.0, 'D-': 0.7,
-      'F': 0.0,
-    };
-    return gradePoints[letterGrade] || 0;
+    // Gradebook is calculated on-the-fly from grades collection
+    // No need for separate gradebook collection
+    this.emit('gradebook:updated', { studentId: grade.studentId, courseId: grade.courseId });
   }
 
   /**
@@ -549,63 +515,168 @@ export class GradingEngine extends EventEmitter {
   }
 
   /**
-   * Get gradebook for a course
+   * Get gradebook for a course (MongoDB)
    */
-  getGradebook(courseId: string): GradebookEntry[] {
-    const entries: GradebookEntry[] = [];
-    for (const [key, entry] of this.gradebooks.entries()) {
-      if (entry.courseId === courseId) {
-        entries.push(entry);
-      }
+  async getGradebook(courseId: string): Promise<GradebookEntry[]> {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
     }
-    return entries.sort((a, b) => a.studentNumber.localeCompare(b.studentNumber));
-  }
 
-  /**
-   * Get student gradebook
-   */
-  getStudentGradebook(studentId: string, courseId?: string): GradebookEntry[] {
-    const entries: GradebookEntry[] = [];
-    for (const [key, entry] of this.gradebooks.entries()) {
-      if (entry.studentId === studentId && (!courseId || entry.courseId === courseId)) {
-        entries.push(entry);
+    const grades = await Grade.find({ courseId });
+    const gradeMap = new Map<string, GradebookEntry>();
+
+    for (const grade of grades) {
+      const key = `${grade.courseId}:${grade.studentId}`;
+      let entry = gradeMap.get(key);
+
+      if (!entry) {
+        entry = {
+          studentId: grade.studentId,
+          studentNumber: grade.studentNumber,
+          courseId: grade.courseId,
+          assessments: [],
+          currentGrade: 0,
+          letterGrade: 'F',
+          gpa: 0,
+          totalPoints: 0,
+          earnedPoints: 0,
+          lastUpdated: new Date(),
+        };
       }
+
+      const assessment = await Assessment.findOne({ id: grade.assessmentId });
+      entry.assessments.push({
+        assessmentId: grade.assessmentId,
+        assessmentName: assessment?.title || 'Unknown',
+        points: grade.earnedPoints,
+        maxPoints: grade.totalPoints,
+        percentage: grade.percentage,
+        letterGrade: grade.letterGrade,
+        gradedAt: grade.gradedAt,
+      });
+
+      entry.totalPoints = entry.assessments.reduce((sum, a) => sum + a.maxPoints, 0);
+      entry.earnedPoints = entry.assessments.reduce((sum, a) => sum + a.points, 0);
+      entry.currentGrade = entry.totalPoints > 0 ? (entry.earnedPoints / entry.totalPoints) * 100 : 0;
+      entry.letterGrade = this.calculateLetterGrade(entry.currentGrade);
+      entry.gpa = this.calculateGPA(entry.letterGrade);
+      entry.lastUpdated = new Date();
+
+      gradeMap.set(key, entry);
     }
-    return entries;
+
+    return Array.from(gradeMap.values()).sort((a, b) => 
+      a.studentNumber.localeCompare(b.studentNumber)
+    );
   }
 
   /**
-   * Get grade by ID
+   * Get student gradebook (MongoDB)
    */
-  getGrade(gradeId: string): Grade | undefined {
-    return this.grades.get(gradeId);
-  }
+  async getStudentGradebook(studentId: string, courseId?: string): Promise<GradebookEntry[]> {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
 
-  /**
-   * Get all grades for a student
-   */
-  getStudentGrades(studentId: string, courseId?: string): Grade[] {
-    const grades: Grade[] = [];
-    for (const grade of this.grades.values()) {
-      if (grade.studentId === studentId && (!courseId || grade.courseId === courseId)) {
-        grades.push(grade);
+    const query: any = { studentId };
+    if (courseId) {
+      query.courseId = courseId;
+    }
+
+    const grades = await Grade.find(query);
+    const gradeMap = new Map<string, GradebookEntry>();
+
+    for (const grade of grades) {
+      const key = `${grade.courseId}:${grade.studentId}`;
+      let entry = gradeMap.get(key);
+
+      if (!entry) {
+        entry = {
+          studentId: grade.studentId,
+          studentNumber: grade.studentNumber,
+          courseId: grade.courseId,
+          assessments: [],
+          currentGrade: 0,
+          letterGrade: 'F',
+          gpa: 0,
+          totalPoints: 0,
+          earnedPoints: 0,
+          lastUpdated: new Date(),
+        };
       }
+
+      const assessment = await Assessment.findOne({ id: grade.assessmentId });
+      entry.assessments.push({
+        assessmentId: grade.assessmentId,
+        assessmentName: assessment?.title || 'Unknown',
+        points: grade.earnedPoints,
+        maxPoints: grade.totalPoints,
+        percentage: grade.percentage,
+        letterGrade: grade.letterGrade,
+        gradedAt: grade.gradedAt,
+      });
+
+      entry.totalPoints = entry.assessments.reduce((sum, a) => sum + a.maxPoints, 0);
+      entry.earnedPoints = entry.assessments.reduce((sum, a) => sum + a.points, 0);
+      entry.currentGrade = entry.totalPoints > 0 ? (entry.earnedPoints / entry.totalPoints) * 100 : 0;
+      entry.letterGrade = this.calculateLetterGrade(entry.currentGrade);
+      entry.gpa = this.calculateGPA(entry.letterGrade);
+      entry.lastUpdated = new Date();
+
+      gradeMap.set(key, entry);
     }
-    return grades.sort((a, b) => b.gradedAt.getTime() - a.gradedAt.getTime());
+
+    return Array.from(gradeMap.values());
   }
 
   /**
-   * Get submission by ID
+   * Get grade by ID (MongoDB)
    */
-  getSubmission(submissionId: string): Submission | undefined {
-    return this.submissions.get(submissionId);
+  async getGrade(gradeId: string): Promise<Grade | null> {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+    const grade = await Grade.findOne({ id: gradeId });
+    return grade ? grade.toObject() : null;
   }
 
   /**
-   * Get assessment by ID
+   * Get all grades for a student (MongoDB)
    */
-  getAssessment(assessmentId: string): Assessment | undefined {
-    return this.assessments.get(assessmentId);
+  async getStudentGrades(studentId: string, courseId?: string): Promise<Grade[]> {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+
+    const query: any = { studentId };
+    if (courseId) {
+      query.courseId = courseId;
+    }
+
+    const grades = await Grade.find(query).sort({ gradedAt: -1 });
+    return grades.map(g => g.toObject());
+  }
+
+  /**
+   * Get submission by ID (MongoDB)
+   */
+  async getSubmission(submissionId: string): Promise<Submission | null> {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+    const submission = await Submission.findOne({ id: submissionId });
+    return submission ? submission.toObject() : null;
+  }
+
+  /**
+   * Get assessment by ID (MongoDB)
+   */
+  async getAssessment(assessmentId: string): Promise<Assessment | null> {
+    if (!azoraDatabase.isDatabaseConnected()) {
+      throw new Error('Database not connected');
+    }
+    const assessment = await Assessment.findOne({ id: assessmentId });
+    return assessment ? assessment.toObject() : null;
   }
 }
 
