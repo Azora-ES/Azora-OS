@@ -6,74 +6,106 @@ Copyright © 2025 Azora ES (Pty) Ltd. All Rights Reserved.
 See LICENSE file for details.
 */
 
-import express from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
-import rateLimit from 'express-rate-limit'
-import { PrismaClient } from '@prisma/client'
-import dotenv from 'dotenv'
-import { contactRoutes } from './routes/contact.js'
-import { newsletterRoutes } from './routes/newsletter.js'
-import { healthRoutes } from './routes/health.js'
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
 
-dotenv.config()
+import { getServiceBrand } from './lib/branding/service-config.js';
+import { contactRoutes } from './routes/contact.js';
+import { newsletterRoutes } from './routes/newsletter.js';
+import { healthRoutes } from './routes/health.js';
 
-const app = express()
-const prisma = new PrismaClient()
-const PORT = process.env.PORT || 3001
+dotenv.config();
 
-// Security middleware
-app.use(helmet())
+const app = express();
+const prisma = new PrismaClient();
+const PORT = process.env.PORT || 4000; // Changed to 4000 to match docs
+
+// --- Security Middleware ---
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Unsafe-inline needed for some legacy scripts
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:5173'],
+    },
+  },
+}));
+
+const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:3000'];
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}))
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 
-// Rate limiting
-const limiter = rateLimit({
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-})
-app.use('/api/', limiter)
+  max: 100,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true }))
+// --- Body Parsing ---
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/contact', contactRoutes)
-app.use('/api/newsletter', newsletterRoutes)
-app.use('/api/health', healthRoutes)
+// --- API Routes ---
+const brand = getServiceBrand('backend'); // Get branding for the backend
 
-// Error handling middleware
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    service: brand.name,
+    tagline: brand.tagline,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.use('/api/contact', contactRoutes);
+app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/health', healthRoutes);
+
+// --- Error Handling ---
 app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  })
-})
+  console.error(err);
+  const status = err.status || 500;
+  res.status(status).json({
+    error: {
+      message: err.message || 'An unexpected error occurred.',
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    },
+  });
+});
 
-// 404 handler
+// --- 404 Handler ---
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' })
-})
+  res.status(404).json({ error: 'Not Found' });
+});
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully')
-  await prisma.$disconnect()
-  process.exit(0)
-})
+// --- Graceful Shutdown ---
+const shutdown = async (signal) => {
+  console.log(`${signal} received, shutting down gracefully.`);
+  await prisma.$disconnect();
+  process.exit(0);
+};
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully')
-  await prisma.$disconnect()
-  process.exit(0)
-})
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
+// --- Server Start ---
 app.listen(PORT, () => {
-  console.log(`Azora Portal Backend running on port ${PORT}`)
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
-})
+  console.log(`🚀 ${brand.name} backend listening on port ${PORT}`)
+  console.log(`      Environment: ${process.env.NODE_ENV || 'development'}`)
+});
