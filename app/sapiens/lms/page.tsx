@@ -695,21 +695,55 @@ function ProjectCard() {
   );
 }
 
-function PortfolioProject() {
+/**
+ * Portfolio item card component displaying completed project details
+ * @param project - Project data including title, description, status, and rewards
+ */
+function PortfolioItemCard({ project }: { project: any }) {
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'from-green-600 to-emerald-600';
+      case 'in-progress': return 'from-yellow-600 to-orange-600';
+      case 'pending': return 'from-blue-600 to-cyan-600';
+      default: return 'from-purple-600 to-pink-600';
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden border border-purple-500/20 hover:border-purple-500/50 transition-all hover:scale-105">
-      <div className="h-40 bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+      <div className={`h-40 bg-gradient-to-r ${getStatusColor(project.status)} flex items-center justify-center`}>
         <Code2 className="w-16 h-16 opacity-50" />
       </div>
       <div className="p-4">
-        <h4 className="font-bold mb-2">E-Commerce Platform</h4>
-        <p className="text-sm text-gray-400 mb-3">Full-stack web application with payment integration</p>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-green-400">Earned: $450</span>
-          <button className="bg-purple-600 hover:bg-purple-500 px-3 py-1 rounded text-sm">
-            View Live
-          </button>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-bold">{project.title}</h4>
+          <span className={`text-xs px-2 py-1 rounded-full ${
+            project.status === 'completed' ? 'bg-green-600/20 text-green-300' : 'bg-yellow-600/20 text-yellow-300'
+          }`}>
+            {project.status || 'Completed'}
+          </span>
         </div>
+        <p className="text-sm text-gray-400 mb-3 line-clamp-2">{project.description}</p>
+        <div className="space-y-2">
+          {project.pivcReward && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">PIVC Earned:</span>
+              <span className="text-green-400 font-bold">{project.pivcReward}</span>
+            </div>
+          )}
+          {project.requiredSkills && project.requiredSkills.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {project.requiredSkills.slice(0, 3).map((skill: string, i: number) => (
+                <span key={i} className="text-xs bg-purple-600/30 px-2 py-1 rounded">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <button className="mt-3 w-full bg-purple-600 hover:bg-purple-500 px-3 py-2 rounded-lg text-sm transition-colors">
+          View Details
+        </button>
       </div>
     </div>
   );
