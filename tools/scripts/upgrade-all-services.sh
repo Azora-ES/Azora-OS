@@ -14,8 +14,13 @@
 
 set -e
 
-SERVICES_DIR="/workspace/services"
-SHARED_DIR="/workspace/services/shared"
+# Get the script's directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+REPO_ROOT="$SCRIPT_DIR"
+
+SERVICES_DIR="$REPO_ROOT/services"
+APPS_DIR="$REPO_ROOT/apps"
+SHARED_DIR="$REPO_ROOT/services/shared"
 
 # Colors
 RED='\033[0;31m'
@@ -42,29 +47,50 @@ file_exists() {
 # Function to count console.log usage
 count_console_logs() {
     local service=$1
-    local count=$(find "$SERVICES_DIR/$service" -name "*.ts" -not -path "*/node_modules/*" -exec grep -c "console\." {} + 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    local count=$(find "$target_dir" -name "*.ts" -o -name "*.tsx" -not -path "*/node_modules/*" -exec grep -c "console\." {} + 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
     echo "$count"
 }
 
 # Function to count 'any' usage
 count_any_types() {
     local service=$1
-    local count=$(find "$SERVICES_DIR/$service" -name "*.ts" -not -path "*/node_modules/*" -exec grep -c ": any\|<any>" {} + 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    local count=$(find "$target_dir" -name "*.ts" -o -name "*.tsx" -not -path "*/node_modules/*" -exec grep -c ": any\|<any>" {} + 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
     echo "$count"
 }
 
 # Function to create standard tsconfig.json
 create_tsconfig() {
     local service=$1
-    if ! file_exists "$service" "tsconfig.json"; then
-        cat > "$SERVICES_DIR/$service/tsconfig.json" <<'EOF'
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    if [ ! -f "$target_dir/tsconfig.json" ]; then
+        cat > "$target_dir/tsconfig.json" <<'EOF'
 {
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -77,7 +103,7 @@ create_tsconfig() {
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist", "__tests__"]
 }
 EOF
@@ -90,17 +116,25 @@ EOF
 # Function to create jest.config.js
 create_jest_config() {
     local service=$1
-    if ! file_exists "$service" "jest.config.js"; then
-        cat > "$SERVICES_DIR/$service/jest.config.js" <<'EOF'
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    if [ ! -f "$target_dir/jest.config.js" ] && [ ! -f "$target_dir/jest.config.json" ]; then
+        cat > "$target_dir/jest.config.js" <<'EOF'
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/__tests__'],
+  roots: ['<rootDir>'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
   collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.d.ts',
-    '!src/index.ts'
+    '**/*.ts',
+    '!**/*.d.ts',
+    '!**/node_modules/**',
+    '!**/dist/**'
   ],
   coverageThreshold: {
     global: {
@@ -114,15 +148,22 @@ module.exports = {
 EOF
         echo -e "${GREEN}✅ Created jest.config.js${NC}"
     else
-        echo -e "${BLUE}ℹ️  jest.config.js exists${NC}"
+        echo -e "${BLUE}ℹ️  jest config exists${NC}"
     fi
 }
 
 # Function to create .env.example
 create_env_example() {
     local service=$1
-    if ! file_exists "$service" ".env.example"; then
-        cat > "$SERVICES_DIR/$service/.env.example" <<'EOF'
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    if [ ! -f "$target_dir/.env.example" ]; then
+        cat > "$target_dir/.env.example" <<'EOF'
 # Service Configuration
 NODE_ENV=development
 PORT=3000
@@ -137,8 +178,9 @@ REDIS_URL=redis://localhost:6379
 # Authentication
 JWT_SECRET=your-secret-key-here
 
-# Organism Integration
-SUPREME_ORGANISM_URL=http://localhost:3100
+# Master Orchestrator Integration
+ORCHESTRATOR_URL=http://localhost:9000
+ORCHESTRATOR_WS=ws://localhost:9000/orchestrator/stream
 EOF
         echo -e "${GREEN}✅ Created .env.example${NC}"
     else
@@ -149,9 +191,15 @@ EOF
 # Function to create __tests__ directory
 create_tests_dir() {
     local service=$1
-    if [ ! -d "$SERVICES_DIR/$service/__tests__" ]; then
-        mkdir -p "$SERVICES_DIR/$service/__tests__/unit"
-        mkdir -p "$SERVICES_DIR/$service/__tests__/integration"
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    if [ ! -d "$target_dir/__tests__" ]; then
+        mkdir -p "$target_dir/__tests__"
         echo -e "${GREEN}✅ Created __tests__ directory${NC}"
     else
         echo -e "${BLUE}ℹ️  __tests__ directory exists${NC}"
@@ -161,9 +209,16 @@ create_tests_dir() {
 # Function to upgrade package.json
 upgrade_package_json() {
     local service=$1
-    if file_exists "$service" "package.json"; then
+    local target_dir="$SERVICES_DIR/$service"
+    
+    # Check if this is in apps directory instead
+    if [ ! -d "$target_dir" ] && [ -d "$APPS_DIR/$service" ]; then
+        target_dir="$APPS_DIR/$service"
+    fi
+    
+    if [ -f "$target_dir/package.json" ]; then
         # Check if test script exists
-        if ! grep -q '"test"' "$SERVICES_DIR/$service/package.json"; then
+        if ! grep -q '"test"' "$target_dir/package.json"; then
             echo -e "${YELLOW}⚠️  No test script in package.json${NC}"
         fi
     else
@@ -206,18 +261,60 @@ upgrade_service() {
     echo -e "${GREEN}✅ Service upgrade complete${NC}"
 }
 
-# Get all azora services
+# Get all services
 echo "🔍 Scanning for services..."
-services=$(find "$SERVICES_DIR" -type d -name "azora-*" -maxdepth 1 -exec basename {} \; | sort)
+
+# Scan for all services in services/ directory
+services=$(find "$SERVICES_DIR" -mindepth 1 -maxdepth 1 -type d -not -name "shared" -exec basename {} \; | sort)
+
+# Also scan apps/ directory
+echo "🔍 Scanning for apps..."
+apps=$(find "$APPS_DIR" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort)
 
 total=0
 upgraded=0
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📦 UPGRADING SERVICES"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 for service in $services; do
     ((total++))
     if service_exists "$service"; then
         upgrade_service "$service"
         ((upgraded++))
+    fi
+done
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📦 UPGRADING APPS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+for app in $apps; do
+    ((total++))
+    if [ -d "$APPS_DIR/$app" ]; then
+        echo ""
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${BLUE}📱 Upgrading App: $app${NC}"
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        
+        # Apps may use different structure, check for package.json
+        if [ -f "$APPS_DIR/$app/package.json" ]; then
+            echo -e "${GREEN}✅ App has package.json${NC}"
+            
+            # Check for tests
+            if [ -d "$APPS_DIR/$app/__tests__" ] || [ -d "$APPS_DIR/$app/tests" ]; then
+                echo -e "${GREEN}✅ Tests directory exists${NC}"
+            else
+                echo -e "${YELLOW}⚠️  No tests directory found${NC}"
+            fi
+            
+            ((upgraded++))
+        else
+            echo -e "${YELLOW}⚠️  No package.json found${NC}"
+        fi
     fi
 done
 
