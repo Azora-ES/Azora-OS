@@ -1,0 +1,47 @@
+{
+  "name": "@azora/virtual-card-service",
+  "version": "1.0.0",
+  "description": "Azora OS virtual-card-service - Constitutional AI Compliant",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts",
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint . --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "azora",
+    "constitutional-ai",
+    "microservice",
+    "africa",
+    "virtual-card-service"
+  ],
+  "author": "Azora ES (Pty) Ltd",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "express": "^5.1.0",
+    "winston": "^3.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "@types/jest": "^29.5.5",
+    "eslint": "^8.51.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

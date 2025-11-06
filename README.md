@@ -13,6 +13,8 @@
 [![Services](https://img.shields.io/badge/Microservices-190+-orange.svg)](#architecture)
 [![Status](https://img.shields.io/badge/Status-Production--Ready-success.svg)](#status)
 [![Health](https://img.shields.io/badge/Organism%20Health-95%25-brightgreen.svg)](#health)
+[![Constitutional AI](https://img.shields.io/badge/Constitutional_AI-100%25-brightgreen.svg)](./CONSTITUTIONAL_COMPLIANCE.md)
+[![2026 Ready](https://img.shields.io/badge/2026-Ready-blue.svg)](./UPGRADE_2026.md)
 
 [🚀 Quick Start](#quick-start) · [📖 Documentation](#documentation) · [🏗️ Architecture](#architecture) · [🤝 Contributing](#contributing) · [💬 Community](#community)
 

@@ -1,44 +1,52 @@
-# Azora OS Master Orchestrator
+# Master Orchestrator - Central Nervous System of Azora OS
 
-The Master Orchestrator is the central nervous system of Azora OS, responsible for:
+The Master Orchestrator is the intelligent control system that manages the entire Azora OS ecosystem. It automatically discovers, launches, monitors, and heals all services in the platform.
 
-- **Service Discovery & Registration**: Automatically discover and register all microservices
-- **Health Monitoring**: Continuous health checks for all services
-- **Self-Healing**: Automatic restart and recovery of failed services
-- **Load Balancing**: Distribute requests across healthy service instances
-- **Dependency Management**: Track and manage service dependencies
+## 🎯 Purpose
 
-## Features
+Transform Azora from a collection of independent services into a living, self-managing organism that:
+- Automatically discovers and catalogs all services
+- Launches services in the correct dependency order
+- Continuously monitors service health
+- Automatically heals failures without human intervention
+- Provides real-time system visibility
 
-### 🔍 Service Discovery
-- Automatic service registration
-- Dynamic service lookup by type or ID
-- Dependency tree visualization
+## 🏗️ Architecture
 
-### 💚 Health Monitoring
-- Configurable health check intervals
-- Real-time health status tracking
-- Performance metrics (response time, uptime, etc.)
+### Core Components
 
-### 🔄 Self-Healing
-- Automatic service restart on failure
-- Configurable retry policies
-- Graceful degradation
+#### 1. Service Discovery Engine
+- Auto-scans the `services/` directory
+- Builds intelligent dependency graphs
+- Creates a comprehensive service registry
+- Tracks service capabilities and versions
 
-### ⚖️ Load Balancing
-Supports multiple strategies:
-- Round-robin
-- Least connections
-- Weighted distribution
-- IP hash
+#### 2. Phased Launching Engine
+- Launches services in 7 dependency-aware phases
+- Supports parallel and serial launch strategies
+- Implements timeout management
+- Provides graceful degradation on failures
 
-### 📊 Monitoring & Events
-- Real-time event streaming
-- Service lifecycle events
-- Health status changes
-- Failure alerts
+#### 3. Health Monitoring System
+- Polls `/health` endpoints every 5 seconds
+- Tracks service health status in real-time
+- Collects performance metrics
+- Detects degradation patterns
 
-## Quick Start
+#### 4. Self-Healing Engine
+- Automatically detects service failures
+- Executes intelligent restart protocols
+- Implements circuit breaker pattern
+- Prevents cascading failures
+- Quarantines persistently failing services
+
+#### 5. REST API & WebSocket Server
+- Real-time system status via WebSocket
+- RESTful API for monitoring and control
+- Manual service restart capabilities
+- Dependency graph visualization
+
+## 🚀 Quick Start
 
 ### Installation
 
@@ -47,151 +55,312 @@ cd services/master-orchestrator
 npm install
 ```
 
-### Development
+### Running
 
 ```bash
+# Start the orchestrator
+npm start
+
+# Development mode with auto-reload
 npm run dev
 ```
 
-### Production
+### Testing
 
 ```bash
-npm run build
-npm start
+npm test
 ```
 
-## API Endpoints
+## 📡 API Endpoints
 
-### Health & Status
+### REST API (Port 9000)
 
-- `GET /health` - Orchestrator health check
-- `GET /status` - Overall system status
-- `GET /status/detailed` - Detailed service information
+#### System Status
+```http
+GET /orchestrator/status
+```
+Returns complete system status including all services, health, and healing history.
 
-### Service Management
+#### Service List
+```http
+GET /orchestrator/services
+```
+Returns list of all services with current status.
 
-- `POST /services/register` - Register a new service
-- `DELETE /services/:serviceId` - Unregister a service
-- `GET /services` - List all services (optionally filter by type)
-- `GET /services/:serviceId` - Get specific service details
+#### Service Details
+```http
+GET /orchestrator/services/:name
+```
+Returns detailed information about a specific service.
 
-### Load Balancing
+#### Health Status
+```http
+GET /orchestrator/health-status
+```
+Returns overall system health metrics.
 
-- `GET /loadbalancer/:serviceType` - Get a healthy service instance for the given type
+#### Dependency Graph
+```http
+GET /orchestrator/dependencies
+```
+Returns the service dependency graph.
 
-### Orchestrator Control
+#### Healing History
+```http
+GET /orchestrator/healing-history?limit=100
+```
+Returns recent healing events.
 
-- `POST /orchestrator/start` - Start the orchestrator
-- `POST /orchestrator/stop` - Stop the orchestrator
+#### Manual Restart
+```http
+POST /orchestrator/restart/:service
+```
+Manually restart a specific service.
 
-## Configuration
+#### Statistics
+```http
+GET /orchestrator/stats
+```
+Returns system statistics and metrics.
 
-Services are configured in `src/service-config.ts`. Each service requires:
+### WebSocket (ws://localhost:9000/orchestrator/stream)
+
+Connect to receive real-time updates:
+```javascript
+const ws = new WebSocket('ws://localhost:9000/orchestrator/stream');
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  switch (message.type) {
+    case 'status_update':
+      // System status update
+      break;
+    case 'health_update':
+      // Service health update
+      break;
+    case 'healing_event':
+      // Self-healing action
+      break;
+    case 'service_event':
+      // Service start/stop/failure
+      break;
+  }
+};
+```
+
+## 📋 Launch Phases
+
+The orchestrator launches services in 7 carefully ordered phases:
+
+### Phase 0: Critical Infrastructure (Serial)
+- azora-covenant
+- azora-aegis
+- azora-database
+- azora-core
+
+### Phase 1: Core Services (Parallel)
+- azora-mint
+- azora-nexus
+- auth-service
+- user-management
+- notification-service
+
+### Phase 2: Intelligence Layer (Parallel)
+- azora-lms
+- ambient-intelligence
+- quantum-ai
+- ai-orchestrator
+- analytics-service
+
+### Phase 3: B2B Industries (Parallel)
+- retail-ai
+- cold-chain
+- community-safety
+- agriculture-ai
+- logistics-optimizer
+
+### Phase 4: User-Facing Services (Parallel)
+- api-gateway
+- azora-forge
+- azora-marketplace
+- payment-gateway
+- messaging-service
+
+### Phase 5: Advanced Services (Parallel)
+- judiciary-service
+- constitutional-court
+- arbiter-service
+- compliance-engine
+- audit-logging-service
+
+### Phase 6: Optional Services (Parallel)
+- quantum-deep-mind
+- enterprise-analytics
+- blockchain-integration
+- iot-gateway
+
+## 🔧 Self-Healing Protocols
+
+### Restart Strategies
+
+1. **Immediate Restart** (Attempts 1-3)
+   - Quick restart with minimal delay
+   - Exponential backoff: 1s, 5s, 15s
+
+2. **Graceful Restart** (Attempts 4-5)
+   - Verify dependencies are healthy
+   - Graceful shutdown (SIGTERM)
+   - 30s, 60s backoff
+
+3. **Dependency Restart** (Attempts 6-7)
+   - Restart failed dependencies first
+   - Wait for stabilization
+   - Retry main service
+
+4. **Quarantine** (After max attempts)
+   - Mark service as quarantined
+   - Prevent restart loops
+   - Require manual intervention
+
+### Circuit Breaker
+
+- Opens after 3 consecutive failures
+- Prevents cascading failures
+- Automatically resets after 60 seconds
+- Half-open state for testing recovery
+
+## 📊 Service Registry
+
+Each service in the registry contains:
 
 ```typescript
 {
-  id: string;                    // Unique identifier
-  name: string;                  // Human-readable name
-  type: 'core' | 'b2b' | 'infrastructure';
-  endpoint: string;              // Service URL
-  healthCheckPath: string;       // Health check endpoint
-  healthCheckInterval: number;   // Milliseconds between checks
-  maxRestarts: number;           // Maximum restart attempts
-  restartDelay: number;          // Delay before restart (ms)
-  priority: number;              // 1-10, higher is more critical
-  dependencies: string[];        // Array of service IDs
+  metadata: {
+    name: string
+    port: number
+    version: string
+    dependencies: string[]
+    priority: 'critical' | 'high' | 'medium' | 'low'
+    launchPhase: number
+    capabilities: string[]
+  },
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'timeout' | 'quarantined',
+  process: ChildProcess,
+  healthHistory: HealthCheckResult[],
+  restartAttempts: number,
+  metrics: {
+    requestCount: number
+    errorCount: number
+    avgResponseTime: number
+    uptimePercentage: number
+  }
 }
 ```
 
-## Registered Services
+## 🔍 Monitoring
 
-### Core Services
-- **Azora Aegis**: Security & authentication
-- **Azora Nexus**: Data intelligence & analytics
-- **Azora Mint**: Tokenization & mining
-- **Azora Covenant**: Billing & record-keeping
-- **Azora LMS**: Learning management system
-- **Synapse Backend**: AI intelligence
+### Health Checks
 
-### B2B Services (Horizon 1)
-- **Retail AI Service**: Retail optimization
-- **Cold Chain Service**: Temperature monitoring
-- **Community Safety Service**: Emergency response
+- Performed every 5 seconds
+- Multiple endpoint fallbacks: `/health`, `/api/health`, `/status`, `/ping`
+- Tracks: response time, uptime, memory, CPU, dependencies
 
-### Infrastructure
-- **API Gateway**: Unified API entry point
-- **Mining Engine**: Blockchain processing
+### Metrics Collection
 
-## Environment Variables
+- Service uptime
+- Response times
+- Error rates
+- Restart counts
+- Health history (last 100 checks)
 
-```bash
-ORCHESTRATOR_PORT=5000          # API server port
+## 🛠️ Configuration
 
-# Service endpoints
-AEGIS_ENDPOINT=http://localhost:3001
-NEXUS_ENDPOINT=http://localhost:3002
-MINT_ENDPOINT=http://localhost:3003
-COVENANT_ENDPOINT=http://localhost:3004
-LMS_ENDPOINT=http://localhost:3005
-SYNAPSE_ENDPOINT=http://localhost:3006
-API_GATEWAY_ENDPOINT=http://localhost:3000
-MINING_ENGINE_ENDPOINT=http://localhost:3007
-
-# B2B Service endpoints
-RETAIL_AI_ENDPOINT=http://localhost:4001
-COLD_CHAIN_ENDPOINT=http://localhost:4002
-COMMUNITY_SAFETY_ENDPOINT=http://localhost:4003
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│           Master Orchestrator API Server                │
-│                 (Port 5000)                             │
-└────────────────────┬────────────────────────────────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-    ┌────▼────┐           ┌─────▼──────┐
-    │ Service │           │   Health   │
-    │Registry │           │   Check    │
-    └────┬────┘           └─────┬──────┘
-         │                      │
-    ┌────▼────────────────┬─────▼──────┐
-    │   Load Balancer     │ Self-      │
-    │                     │ Healing    │
-    └─────────────────────┴────────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-    ┌────▼────┐           ┌─────▼──────┐
-    │  Core   │           │    B2B     │
-    │Services │           │  Services  │
-    └─────────┘           └────────────┘
-```
-
-## Events
-
-Subscribe to events using the event emitter:
+Edit `orchestrator-config.ts` to customize:
 
 ```typescript
-const orchestrator = new MasterOrchestrator();
-const eventEmitter = orchestrator.getEventEmitter();
-
-eventEmitter.on('healthCheck', (data) => {
-  console.log(`Health check: ${data.serviceId} - ${data.status}`);
-});
-
-eventEmitter.on('serviceRestarted', (data) => {
-  console.log(`Service restarted: ${data.serviceId}`);
-});
-
-eventEmitter.on('serviceFailed', (data) => {
-  console.error(`Service failed: ${data.serviceId}`);
-});
+{
+  healthCheckInterval: 5000,        // 5 seconds
+  defaultMaxRestartAttempts: 5,
+  defaultStartupTimeout: 60000,     // 60 seconds
+  circuitBreakerThreshold: 3,
+  circuitBreakerResetTimeout: 60000, // 1 minute
+  parallelLaunchLimit: 10,
+  logLevel: 'info'
+}
 ```
 
-## License
+## 📝 Logging
 
-MIT License - see LICENSE file for details
+Logs are written to:
+- Console (with colors)
+- `logs/orchestrator/orchestrator.log` (all logs)
+- `logs/orchestrator/orchestrator-errors.log` (errors only)
+
+Log levels: `debug`, `info`, `warn`, `error`
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test suite
+npm test -- orchestrator.test.ts
+
+# Run with coverage
+npm test -- --coverage
+```
+
+## 🔐 Security
+
+- Service processes run with limited permissions
+- Health endpoints use local networking only
+- API endpoints can be secured with authentication
+- WebSocket connections can be validated
+
+## 🚨 Troubleshooting
+
+### Service won't start
+1. Check service logs in `logs/orchestrator/`
+2. Verify dependencies are healthy
+3. Check port availability
+4. Review restart attempts in healing history
+
+### All services failing
+1. Check Phase 0 (critical infrastructure)
+2. Verify database connectivity
+3. Check system resources (memory, CPU)
+4. Review orchestrator logs
+
+### Circuit breaker keeps opening
+1. Check service health endpoint
+2. Review service logs for errors
+3. Verify dependencies are available
+4. Check for resource exhaustion
+
+## 📈 Performance
+
+- Handles 100+ services efficiently
+- Sub-second health checks
+- Minimal memory footprint
+- Parallel launch for speed
+- Optimized dependency resolution
+
+## 🤝 Contributing
+
+This is the central nervous system of Azora OS. Changes should be:
+- Thoroughly tested
+- Backward compatible
+- Well documented
+- Performance optimized
+
+## 📄 License
+
+Copyright © 2025 Azora ES (Pty) Ltd. All Rights Reserved.
+
+See LICENSE file for details.
+
+---
+
+**Built with ❤️ for Africa's Digital Transformation**
